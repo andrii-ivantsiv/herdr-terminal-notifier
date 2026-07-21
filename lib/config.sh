@@ -102,26 +102,36 @@ _tn_default GROUP "{pane}"
 
 # Per-status presentation. Placeholders:
 #   {agent} {workspace} {worktree} {tab} {tab_label} {pane} {session} {old_status} {new_status} {cwd}
-_tn_default TITLE_BLOCKED "⏳ {agent} needs input"
-_tn_default BODY_BLOCKED "{workspace} · {worktree}"
-_tn_default ICON_BLOCKED "assets/icons/blocked.png"
-_tn_default SOUND_BLOCKED "Glass"
+_tn_default TITLE_BLOCKED "{agent}"
+_tn_default BODY_BLOCKED "needs input"
+_tn_default ICON_BLOCKED ""
 
-_tn_default TITLE_DONE "✅ {agent} done"
-_tn_default BODY_DONE "{workspace} · {worktree}"
-_tn_default ICON_DONE "assets/icons/done.png"
-_tn_default SOUND_DONE "Hero"
+_tn_default TITLE_DONE "{agent}"
+_tn_default BODY_DONE "done"
+_tn_default ICON_DONE ""
 
-_tn_default TITLE_WORKING "🔧 {agent} working"
-_tn_default BODY_WORKING "{workspace} · {worktree}"
-_tn_default ICON_WORKING "assets/icons/working.png"
-_tn_default SOUND_WORKING "none"
+_tn_default TITLE_WORKING "{agent}"
+_tn_default BODY_WORKING "working"
+_tn_default ICON_WORKING ""
 
 # Fallback for any other status not given an explicit template above.
-_tn_default TITLE_DEFAULT "{agent}: {new_status}"
-_tn_default BODY_DEFAULT "{workspace} · {worktree}"
-_tn_default ICON_DEFAULT "assets/icons/working.png"
-_tn_default SOUND_DEFAULT "none"
+_tn_default TITLE_DEFAULT "{agent}"
+_tn_default BODY_DEFAULT "{new_status}"
+_tn_default ICON_DEFAULT ""
+
+# Respect [ui.sound] enabled = false in ~/.config/herdr/config.toml
+_herdr_config="${HERDR_CONFIG_PATH:-$HOME/.config/herdr/config.toml}"
+if [ -f "$_herdr_config" ] && awk '/\[ui\.sound\]/{flag=1; next} /^\[/{flag=0} flag && /enabled[[:space:]]*=[[:space:]]*false/{found=1} END {exit !found}' "$_herdr_config" 2>/dev/null; then
+  _tn_default SOUND_BLOCKED "none"
+  _tn_default SOUND_DONE "none"
+  _tn_default SOUND_WORKING "none"
+  _tn_default SOUND_DEFAULT "none"
+else
+  _tn_default SOUND_BLOCKED "Glass"
+  _tn_default SOUND_DONE "Hero"
+  _tn_default SOUND_WORKING "none"
+  _tn_default SOUND_DEFAULT "none"
+fi
 
 # Set DEBUG=1 to dump the raw event/context JSON to the state dir.
 _tn_default DEBUG "0"

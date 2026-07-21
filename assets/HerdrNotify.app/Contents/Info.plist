@@ -7,17 +7,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>herdr</string>
+	<string>Herder</string>
 	<key>CFBundleExecutable</key>
 	<string>terminal-notifier</string>
 	<key>CFBundleIconFile</key>
 	<string>Terminal</string>
 	<key>CFBundleIdentifier</key>
-	<string>codes.dot.herdr-notify</string>
+	<string>herdr.terminal-notifier</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>herdr</string>
+	<string>Herder</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

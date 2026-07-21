@@ -8,8 +8,8 @@ When an agent in any workspace becomes **blocked** (waiting for your input) or
 (not the generic terminal icon), and clicking it jumps straight to that pane.
 
 ```
-🐑  ⏳ claude needs input
-    my-project · feature-x          [Show]
+🐑  claude 
+    needs input
 ```
 
 ## Why the bundled notifier app
@@ -23,7 +23,7 @@ The usual tricks don't help on modern macOS:
   supports no icon/sound/click customization at all.
 
 So this plugin ships **`assets/HerdrNotify.app`** — a copy of `terminal-notifier`
-rebranded with the herdr icon and its own bundle id (`codes.dot.herdr-notify`). The
+rebranded with the herdr icon and its own bundle id (`herdr.terminal-notifier`). The
 plugin posts through it, so the notification is genuinely "from herdr" and shows
 the herdr logo. No Homebrew `terminal-notifier` needed at runtime.
 
@@ -43,10 +43,10 @@ notifications per app, and this can't be scripted. After installing:
 
 1. Trigger one notification (e.g. let an agent go blocked), or run
    `assets/HerdrNotify.app/Contents/MacOS/terminal-notifier -title hi -message x`.
-2. Open **System Settings → Notifications → herdr** and turn **Allow Notifications** on
+2. Open **System Settings → Notifications → Herder** and turn **Allow Notifications** on
    (set the style to Alerts/Banners as you like).
 
-The grant is keyed to the bundle id (`codes.dot.herdr-notify`), so it persists across
+The grant is keyed to the bundle id (`herdr.terminal-notifier`), so it persists across
 plugin updates and even if the app moves on disk. If notifications silently stop,
 re-check this setting and that Focus / Do Not Disturb is off.
 
@@ -56,7 +56,7 @@ re-check this setting and that Focus / Do Not Disturb is off.
 > **only when the existing signature is invalid** (setup/install and the handler
 > both verify first). If you deliberately re-sign — e.g. after swapping the icon
 > (`scripts/setup-notifier.sh` with an invalid/absent signature) — and toasts stop,
-> re-approve **herdr** under **System Settings → Notifications**.
+> re-approve **Herder** under **System Settings → Notifications**.
 
 ## Install
 

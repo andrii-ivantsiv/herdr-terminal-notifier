@@ -123,7 +123,7 @@ elif [ -x "$BUNDLED_BIN" ]; then
   if [ "$needs_register" = 1 ]; then
     if ! codesign --verify --deep "$BUNDLED_APP" >/dev/null 2>&1; then
       if codesign --force --deep -s - "$BUNDLED_APP" >/dev/null 2>&1; then
-        log "re-signed HerdrNotify.app (ad-hoc); if desktop notifications stop, re-approve \"herdr\" in System Settings -> Notifications"
+        log "re-signed HerdrNotify.app (ad-hoc); if desktop notifications stop, re-approve \"Herder\" in System Settings -> Notifications"
       else
         log "codesign FAILED for HerdrNotify.app; signature still invalid, will retry within REGISTER_TTL_SECONDS (${register_ttl}s)"
       fi

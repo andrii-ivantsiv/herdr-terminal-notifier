@@ -15,7 +15,7 @@
 #   scripts/install.sh --link [PATH]   # link a local checkout (default: this repo)
 set -euo pipefail
 
-PLUGIN_ID="dot.terminal-notifier"
+PLUGIN_ID="herdr.terminal-notifier"
 GITHUB_SLUG="dot/herdr-terminal-notifier"
 HERDR="${HERDR_BIN_PATH:-herdr}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

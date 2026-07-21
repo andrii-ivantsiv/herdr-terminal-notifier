@@ -11,7 +11,7 @@
 # signature is missing/invalid; a valid signature is left untouched.
 #
 # Note: the one-time "Allow notifications" grant (System Settings -> Notifications
-# -> herdr) cannot be scripted; the first notification will request it.
+# -> Herder) cannot be scripted; the first notification will request it.
 set -euo pipefail
 
 # signature_valid APP — true if APP carries a valid (deep) code signature.
@@ -38,7 +38,7 @@ main() {
     if adhoc_sign "$app"; then
       echo "re-signed notifier (ad-hoc): $app"
       echo "  note: a re-sign can reset the Notifications grant — if desktop toasts" >&2
-      echo "  stop, re-approve \"herdr\" in System Settings -> Notifications." >&2
+      echo "  stop, re-approve \"Herder\" in System Settings -> Notifications." >&2
     else
       # Registration is still attempted; the plugin self-heals on a TTL at
       # notify time, so this build step stays best-effort (exit 0).

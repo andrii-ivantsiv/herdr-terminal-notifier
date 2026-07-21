@@ -104,7 +104,7 @@ echo 1 >"$CTRL/verify_rc"; echo 0 >"$CTRL/sign_rc"
 run_notify || nok "case C: notify.sh exited non-zero: $ERR"
 assert "C: invalid sig -> exactly one --force" test "$(force_count)" -eq 1
 assert "C: re-sign is logged" err_has 're-signed'
-assert "C: hint names \"herdr\" (CFBundleName)" err_has '"herdr"'
+assert "C: hint names \"Herder\" (CFBundleName)" err_has '"Herder"'
 
 # --- Case D: invalid signature, signing FAILS ----------------------------------
 reset_state
