@@ -221,7 +221,11 @@ case " $TRIGGER_STATUSES " in
   *)
     case " $DISMISS_STATUSES " in
       *" $new_status "*)
+        # The group key must match the notification we want to remove. Since it was
+        # created under the previous status, any {new_status} in the template must
+        # be evaluated as $old_status here.
         group="${GROUP//\{pane\}/$pane_id}"
+        group="${group//\{new_status\}/$old_status}"
         if [ -n "$group" ]; then
           "$NOTIFIER_BIN" -remove "$group" >/dev/null 2>&1 || true
           dbg "decision=dismiss group=$group status=$new_status"
