@@ -214,7 +214,12 @@ dbg "old_status=$old_status"
 # zero herdr socket round-trips.
 case " $TRIGGER_STATUSES " in
   *" $new_status "*) : ;;
-  *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES]" ;;
+  *)
+    case " ${DISMISS_STATUSES:-working idle} " in
+      *" $new_status "*) is_dismiss=1 ;;
+      *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES]" ;;
+    esac
+    ;;
 esac
 
 # --- 4. enrich from live herdr state (only reached by triggering events) ------
@@ -348,6 +353,17 @@ args=(-title "$title" -message "$body")
 # the local `group` because the names differ only in case.
 # shellcheck disable=SC2153
 group="$(expand "$GROUP")"
+
+if [ "${is_dismiss:-0}" = 1 ]; then
+  if [ -n "$group" ]; then
+    "$NOTIFIER_BIN" -remove "$group" >/dev/null 2>&1 || true
+    dbg "decision=dismiss group=$group"
+  else
+    dbg "decision=dismiss-skip (no group)"
+  fi
+  exit 0
+fi
+
 [ -n "$group" ] && args+=(-group "$group")
 [ -n "$sound" ] && [ "$sound" != "none" ] && args+=(-sound "$sound")
 
