@@ -999,6 +999,101 @@ test_group_empty_disables() {
   [ "$FAIL" -eq "$PRE_FAIL" ] && pass
 }
 
+# --- dismiss: auto-clear notifications on non-trigger status -----------------
+# A dismiss status (working, idle) must call terminal-notifier -remove with the
+# correct group key, bypassing enrichment, focus suppression, and debounce.
+
+# _remove_arg <notifier-args-file> -> the argv word following "-remove" (or empty).
+_remove_arg() { awk 'p=="-remove"{print; exit} {p=$0}' "$1"; }
+
+test_dismiss_fires() {
+  CURRENT_TEST="dismiss_fires"
+  new_temp
+  local n; n="$(make_notifier "$T/bin")"
+  HERDR_BIN="$(make_herdr "$T/bin")"
+  TN_CONFIG="$T/config.env"
+  make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' \
+    'DISMISS_STATUSES="working idle"' 'SUPPRESS_FOCUSED=0'
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  CONTEXT_JSON='{}'
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on dismiss status"
+  if [ -f "$T/bin/notifier-args" ]; then
+    assert_eq "$(_remove_arg "$T/bin/notifier-args")" "p1" "dismiss calls -remove with pane group"
+  else
+    fail "notifier must be called with -remove on dismiss status"
+  fi
+  # Dismiss short-circuits before enrichment: zero herdr CLI calls.
+  local calls; calls="$(cat "$T/bin/herdr-calls" 2>/dev/null || true)"
+  assert_eq "$calls" "" "dismiss makes ZERO herdr CLI calls"
+  [ "$FAIL" -eq "$PRE_FAIL" ] && pass
+}
+
+test_dismiss_bypasses_focused() {
+  CURRENT_TEST="dismiss_bypasses_focused"
+  new_temp
+  local n; n="$(make_notifier "$T/bin")"
+  HERDR_BIN="$(make_herdr "$T/bin" "w1")"   # w1 is focused
+  make_lsappinfo "$T/bin" "com.test.term" >/dev/null
+  PATH_OVERRIDE="$T/bin:$PATH"
+  TN_CONFIG="$T/config.env"
+  make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' \
+    'DISMISS_STATUSES="working idle"' 'SUPPRESS_FOCUSED=1' 'TERMINAL_APP_IDS="com.test.term"'
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  CONTEXT_JSON='{}'
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on dismiss even when focused"
+  if [ -f "$T/bin/notifier-args" ]; then
+    assert_eq "$(_remove_arg "$T/bin/notifier-args")" "p1" "dismiss fires -remove despite focused workspace"
+  else
+    fail "dismiss must fire even when workspace is focused and terminal frontmost"
+  fi
+  [ "$FAIL" -eq "$PRE_FAIL" ] && pass
+}
+
+test_dismiss_bypasses_debounce() {
+  CURRENT_TEST="dismiss_bypasses_debounce"
+  new_temp
+  local n; n="$(make_notifier "$T/bin")"
+  HERDR_BIN="$(make_herdr "$T/bin")"
+  TN_CONFIG="$T/config.env"
+  make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' \
+    'DISMISS_STATUSES="working idle"' 'SUPPRESS_FOCUSED=0' 'DEBOUNCE_SECONDS=3600'
+  # First working event.
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  CONTEXT_JSON='{}'
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on first dismiss"
+  [ -f "$T/bin/notifier-args" ] || fail "first dismiss must fire -remove"
+  rm -f "$T/bin/notifier-args"
+  # Second working event within debounce window — must still fire.
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on second dismiss within debounce window"
+  if [ -f "$T/bin/notifier-args" ]; then
+    assert_eq "$(_remove_arg "$T/bin/notifier-args")" "p1" "second dismiss fires despite debounce window"
+  else
+    fail "dismiss must not be debounced"
+  fi
+  [ "$FAIL" -eq "$PRE_FAIL" ] && pass
+}
+
+test_dismiss_skip_no_group() {
+  CURRENT_TEST="dismiss_skip_no_group"
+  new_temp
+  local n; n="$(make_notifier "$T/bin")"
+  HERDR_BIN="$(make_herdr "$T/bin")"
+  TN_CONFIG="$T/config.env"
+  make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' \
+    'DISMISS_STATUSES="working idle"' 'SUPPRESS_FOCUSED=0' 'GROUP=""'
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  CONTEXT_JSON='{}'
+  DEBUG_FLAG=1
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on dismiss with no group"
+  [ ! -f "$T/bin/notifier-args" ] || fail "notifier must not be called when group is empty"
+  [ "$FAIL" -eq "$PRE_FAIL" ] && pass
+}
+
 # --- run ---------------------------------------------------------------------
 for t in \
   test_trigger_drop \
@@ -1033,7 +1128,11 @@ for t in \
   test_state_sweep_not_repeated_same_day \
   test_group_default_is_pane \
   test_group_template_expands \
-  test_group_empty_disables; do
+  test_group_empty_disables \
+  test_dismiss_fires \
+  test_dismiss_bypasses_focused \
+  test_dismiss_bypasses_debounce \
+  test_dismiss_skip_no_group; do
   PRE_FAIL="$FAIL"
   "$t"
 done

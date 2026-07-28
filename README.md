@@ -124,6 +124,7 @@ Key settings:
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `TRIGGER_STATUSES` | `"blocked done"` | which new statuses notify |
+| `DISMISS_STATUSES` | `"working idle"` | which new statuses dismiss a previous notification |
 | `SUPPRESS_FOCUSED` | `1` | mute only when the workspace is focused in herdr **and** the terminal is frontmost |
 | `TERMINAL_APP_IDS` | common terminals | bundle ids that host herdr, for the frontmost check (empty/undetectable ⇒ notify) |
 | `DEBOUNCE_SECONDS` | `2` | drop repeated `(pane,status)` within window |
