@@ -232,6 +232,9 @@ case " $TRIGGER_STATUSES " in
         else
           dbg "decision=dismiss-skip (no group) status=$new_status"
         fi
+        if [ -n "$pane_id" ]; then
+          printf '%s %s\n' "$(date +%s)" "$new_status" >"$STATE_DIR/debounce-$pane_key"
+        fi
         exit 0
         ;;
       *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES] or [$DISMISS_STATUSES]" ;;
