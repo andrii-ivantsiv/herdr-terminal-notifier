@@ -33,6 +33,11 @@ _tn_default() { [ -n "${!1:-}" ] || printf -v "$1" '%s' "$2"; }
 # Valid herdr statuses: working blocked idle done unknown
 _tn_default TRIGGER_STATUSES "blocked done"
 
+# Which NEW agent statuses should dismiss/clear an existing notification.
+# For example, when you approve a blocked agent, its status changes to working,
+# so the previous notification can be removed automatically.
+_tn_default DISMISS_STATUSES "working idle"
+
 # Suppress notifications for the workspace you are currently looking at.
 # This fires only when BOTH the event's workspace is the focused herdr workspace
 # AND a herdr-hosting terminal (TERMINAL_APP_IDS) is the frontmost macOS app — so

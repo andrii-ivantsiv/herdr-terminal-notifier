@@ -215,9 +215,9 @@ dbg "old_status=$old_status"
 case " $TRIGGER_STATUSES " in
   *" $new_status "*) : ;;
   *)
-    case " ${DISMISS_STATUSES:-working idle} " in
+    case " $DISMISS_STATUSES " in
       *" $new_status "*) is_dismiss=1 ;;
-      *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES]" ;;
+      *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES] or [$DISMISS_STATUSES]" ;;
     esac
     ;;
 esac
@@ -262,7 +262,7 @@ dbg "cwd=$cwd"
 # stays focused inside herdr, so the blocked/done alert got dropped while you
 # were away. Frontmost detection FAILS OPEN: if lsappinfo is missing/unparsable
 # or TERMINAL_APP_IDS is empty, `front` is empty, no id matches, and we notify.
-if [ "$SUPPRESS_FOCUSED" = "1" ] && [ -n "$workspace_id" ]; then
+if [ "${is_dismiss:-0}" != 1 ] && [ "$SUPPRESS_FOCUSED" = "1" ] && [ -n "$workspace_id" ]; then
   if [ "$(focused_workspace_id)" = "$workspace_id" ]; then
     front="$(frontmost_bundle_id)"
     if [ -n "$front" ] && [ -n "$TERMINAL_APP_IDS" ] \
