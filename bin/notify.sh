@@ -209,14 +209,27 @@ laststatus_file="$STATE_DIR/laststatus-$pane_key"
 printf '%s' "$new_status" >"$laststatus_file"
 dbg "old_status=$old_status"
 
-# --- 3. should this transition notify? ---------------------------------------
+# --- 3. should this transition notify or dismiss? ----------------------------
 # Placed BEFORE live enrichment so a non-triggering status short-circuits with
-# zero herdr socket round-trips.
+# zero herdr socket round-trips. A dismiss status (e.g. working, idle) removes
+# the pane's previous notification and exits immediately — no enrichment, no
+# focus-suppress check, no debounce. The group key is expanded inline with only
+# {pane} (already resolved); other placeholders are left as-is, which is correct
+# for the default GROUP="{pane}" and any pane-scoped custom key.
 case " $TRIGGER_STATUSES " in
   *" $new_status "*) : ;;
   *)
     case " $DISMISS_STATUSES " in
-      *" $new_status "*) is_dismiss=1 ;;
+      *" $new_status "*)
+        group="${GROUP//\{pane\}/$pane_id}"
+        if [ -n "$group" ]; then
+          "$NOTIFIER_BIN" -remove "$group" >/dev/null 2>&1 || true
+          dbg "decision=dismiss group=$group status=$new_status"
+        else
+          dbg "decision=dismiss-skip (no group) status=$new_status"
+        fi
+        exit 0
+        ;;
       *) drop "reason=trigger status=$new_status not in [$TRIGGER_STATUSES] or [$DISMISS_STATUSES]" ;;
     esac
     ;;
@@ -262,7 +275,7 @@ dbg "cwd=$cwd"
 # stays focused inside herdr, so the blocked/done alert got dropped while you
 # were away. Frontmost detection FAILS OPEN: if lsappinfo is missing/unparsable
 # or TERMINAL_APP_IDS is empty, `front` is empty, no id matches, and we notify.
-if [ "${is_dismiss:-0}" != 1 ] && [ "$SUPPRESS_FOCUSED" = "1" ] && [ -n "$workspace_id" ]; then
+if [ "$SUPPRESS_FOCUSED" = "1" ] && [ -n "$workspace_id" ]; then
   if [ "$(focused_workspace_id)" = "$workspace_id" ]; then
     front="$(frontmost_bundle_id)"
     if [ -n "$front" ] && [ -n "$TERMINAL_APP_IDS" ] \
@@ -354,15 +367,6 @@ args=(-title "$title" -message "$body")
 # shellcheck disable=SC2153
 group="$(expand "$GROUP")"
 
-if [ "${is_dismiss:-0}" = 1 ]; then
-  if [ -n "$group" ]; then
-    "$NOTIFIER_BIN" -remove "$group" >/dev/null 2>&1 || true
-    dbg "decision=dismiss group=$group"
-  else
-    dbg "decision=dismiss-skip (no group)"
-  fi
-  exit 0
-fi
 
 [ -n "$group" ] && args+=(-group "$group")
 [ -n "$sound" ] && [ "$sound" != "none" ] && args+=(-sound "$sound")
