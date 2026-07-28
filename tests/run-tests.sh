@@ -190,13 +190,13 @@ test_trigger_drop() {
   HERDR_BIN="$(make_herdr "$T/bin")"
   TN_CONFIG="$T/config.env"
   make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' 'SUPPRESS_FOCUSED=0'
-  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"unknown","agent":"claude","workspace_id":"w1"}}'
   CONTEXT_JSON='{}'
   DEBUG_FLAG=1   # trigger drops are high-volume: logged only under DEBUG
   run_notify
   assert_eq "$REPLY_RC" 0 "exit 0 on non-trigger status"
   assert_contains "$REPLY_ERR" "drop reason=trigger" "logs trigger drop reason"
-  assert_contains "$REPLY_ERR" "working" "trigger drop names the status"
+  assert_contains "$REPLY_ERR" "unknown" "trigger drop names the status"
   [ ! -f "$T/bin/notifier-args" ] || fail "notifier must not fire on non-trigger status"
   [ "$FAIL" -eq "$PRE_FAIL" ] && pass
 }
@@ -523,7 +523,7 @@ test_nontrigger_zero_cli() {
   TN_CONFIG="$T/config.env"
   make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' 'SUPPRESS_FOCUSED=0'
   # Full payload: pane_id + agent_status present, so new_status needs no CLI.
-  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"unknown","agent":"claude","workspace_id":"w1"}}'
   CONTEXT_JSON='{}'
   DEBUG_FLAG=1   # trigger drops are high-volume: logged only under DEBUG
   run_notify
@@ -571,19 +571,19 @@ test_old_status_tracked_across_nontrigger() {
   TN_CONFIG="$T/config.env"
   make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' 'SUPPRESS_FOCUSED=0' \
     'BODY_DONE="{old_status}->{new_status}"'
-  # 1) non-triggering working event: drops, but records laststatus and hits no CLI.
-  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  # 1) non-triggering unknown event: drops, but records laststatus and hits no CLI.
+  EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"unknown","agent":"claude","workspace_id":"w1"}}'
   CONTEXT_JSON='{}'
   DEBUG_FLAG=1
   run_notify
-  assert_eq "$(cat "$T/bin/herdr-calls" 2>/dev/null || true)" "" "working event records old_status with ZERO herdr calls"
-  [ ! -f "$T/bin/notifier-args" ] || fail "working event must not fire the notifier"
-  # 2) triggering done event: expands old_status recorded by the working event.
+  assert_eq "$(cat "$T/bin/herdr-calls" 2>/dev/null || true)" "" "unknown event records old_status with ZERO herdr calls"
+  [ ! -f "$T/bin/notifier-args" ] || fail "unknown event must not fire the notifier"
+  # 2) triggering done event: expands old_status recorded by the unknown event.
   EVENT_JSON='{"event":"pane.agent_status_changed","data":{"pane_id":"p1","agent_status":"done","agent":"claude","workspace_id":"w1"}}'
   DEBUG_FLAG=0
   run_notify
   if [ -f "$T/bin/notifier-args" ]; then
-    assert_contains "$(cat "$T/bin/notifier-args")" "working->done" "old_status transition survives the non-triggering event"
+    assert_contains "$(cat "$T/bin/notifier-args")" "unknown->done" "old_status transition survives the non-triggering event"
   else
     fail "notifier must fire on the triggering done event"
   fi
