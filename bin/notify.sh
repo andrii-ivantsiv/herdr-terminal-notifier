@@ -21,15 +21,16 @@ mkdir -p "$STATE_DIR"
 log() { printf '[terminal-notifier] %s\n' "$*" >&2; }
 
 # --- housekeeping: bound STATE_DIR growth ------------------------------------
-# Each event writes a laststatus-<pane> and debounce-<pane> file, and pane ids are
-# ephemeral, so under a persistent HERDR_PLUGIN_STATE_DIR these accumulate forever
-# (the TMPDIR fallback is reaped by the OS, a real state dir is not). Sweep files
-# older than STATE_SWEEP_DAYS, but only ONCE A DAY: a dedicated sentinel gates the
-# `find` on its own TTL, so the per-event cost is a single stat and the `find`
-# runs at most daily — a bounded cadence, never per-event. The find matches ONLY
-# the two state-file globs, so it can never remove the sentinels it depends on
-# (.state-swept, .notifier-registered), the debug dump, or any other file. It is
-# strictly best-effort: any failure here must never abort the notification.
+# Each event writes a laststatus-<pane>, debounce-<pane>, and group-<pane> file,
+# and pane ids are ephemeral, so under a persistent HERDR_PLUGIN_STATE_DIR these
+# accumulate forever (the TMPDIR fallback is reaped by the OS, a real state dir
+# is not). Sweep files older than STATE_SWEEP_DAYS, but only ONCE A DAY: a
+# dedicated sentinel gates the `find` on its own TTL, so the per-event cost is a
+# single stat and the `find` runs at most daily — a bounded cadence, never
+# per-event. The find matches ONLY the three state-file globs, so it can never
+# remove the sentinels it depends on (.state-swept, .notifier-registered), the
+# debug dump, or any other file. It is strictly best-effort: any failure here
+# must never abort the notification.
 sweep_sentinel="$STATE_DIR/.state-swept"
 # config.sh always sets STATE_SWEEP_DAYS (default 7); the guard only defends the
 # find below against an explicit empty/non-numeric override in a config file.
@@ -44,7 +45,7 @@ else
 fi
 if [ "$sweep_needed" = 1 ]; then
   # BSD/macOS find: -mtime +N matches files older than N*24h; -delete removes them.
-  find "$STATE_DIR" -type f \( -name 'laststatus-*' -o -name 'debounce-*' \) \
+  find "$STATE_DIR" -type f \( -name 'laststatus-*' -o -name 'debounce-*' -o -name 'group-*' \) \
     -mtime "+$sweep_days" -delete 2>/dev/null || true
   : >"$sweep_sentinel"
 fi
@@ -155,6 +156,10 @@ if [ "$DEBUG" = "1" ]; then
     printf 'CONTEXT_JSON=%s\n' "$CONTEXT_JSON"
   } >"$DEBUG_FILE"
   log "debug dump written to $DEBUG_FILE"
+  # Warn if any status appears in both TRIGGER and DISMISS (trigger silently wins).
+  for _s in $TRIGGER_STATUSES; do
+    case " $DISMISS_STATUSES " in *" $_s "*) log "warning: '$_s' in both TRIGGER_STATUSES and DISMISS_STATUSES; trigger wins" ;; esac
+  done
 fi
 
 # --- 2. resolve pane_id + new_status from the EVENT (before any CLI call) -----
@@ -213,19 +218,27 @@ dbg "old_status=$old_status"
 # Placed BEFORE live enrichment so a non-triggering status short-circuits with
 # zero herdr socket round-trips. A dismiss status (e.g. working, idle) removes
 # the pane's previous notification and exits immediately — no enrichment, no
-# focus-suppress check, no debounce. The group key is expanded inline with only
-# {pane} (already resolved); other placeholders are left as-is, which is correct
-# for the default GROUP="{pane}" and any pane-scoped custom key.
+# focus-suppress check, no debounce. The group key for -remove is read from a
+# stored state file (written at post time in section 8) so it matches exactly,
+# even when GROUP uses enrichment placeholders unavailable on this path.
 case " $TRIGGER_STATUSES " in
   *" $new_status "*) : ;;
   *)
     case " $DISMISS_STATUSES " in
       *" $new_status "*)
-        # The group key must match the notification we want to remove. Since it was
-        # created under the previous status, any {new_status} in the template must
-        # be evaluated as $old_status here.
-        group="${GROUP//\{pane\}/$pane_id}"
-        group="${group//\{new_status\}/$old_status}"
+        # Read the stored group key that was saved when the notification was
+        # posted (section 8). This ensures dismiss matches the exact group used
+        # at post time, even when GROUP uses enrichment placeholders ({workspace},
+        # {tab_label}, etc.) unavailable on the dismiss short-circuit path. Falls
+        # back to inline expansion of {pane} and {new_status} (as $old_status)
+        # when no stored group exists (first event before any post).
+        group_file="$STATE_DIR/group-$pane_key"
+        if [ -f "$group_file" ]; then
+          group="$(cat "$group_file" 2>/dev/null || true)"
+        else
+          group="${GROUP//\{pane\}/$pane_id}"
+          group="${group//\{new_status\}/$old_status}"
+        fi
         if [ -n "$group" ]; then
           "$NOTIFIER_BIN" -remove "$group" >/dev/null 2>&1 || true
           dbg "decision=dismiss group=$group status=$new_status"
@@ -373,8 +386,8 @@ args=(-title "$title" -message "$body")
 # the local `group` because the names differ only in case.
 # shellcheck disable=SC2153
 group="$(expand "$GROUP")"
-
-
+# Persist the expanded group so dismiss can match it exactly (see section 3).
+[ -n "$group" ] && [ -n "$pane_id" ] && printf '%s' "$group" >"$STATE_DIR/group-$pane_key"
 [ -n "$group" ] && args+=(-group "$group")
 [ -n "$sound" ] && [ "$sound" != "none" ] && args+=(-sound "$sound")
 

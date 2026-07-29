@@ -23,7 +23,7 @@ The usual tricks don't help on modern macOS:
   supports no icon/sound/click customization at all.
 
 So this plugin ships **`assets/HerdrNotify.app`** — a copy of `terminal-notifier`
-rebranded with the herdr icon and its own bundle id (`herdr.terminal-notifier`). The
+rebranded with the herdr icon and its own bundle id (`herdr.dev.terminal-notifier`). The
 plugin posts through it, so the notification is genuinely "from herdr" and shows
 the herdr logo. No Homebrew `terminal-notifier` needed at runtime.
 
@@ -46,7 +46,7 @@ notifications per app, and this can't be scripted. After installing:
 2. Open **System Settings → Notifications → Herder** and turn **Allow Notifications** on
    (set the style to Alerts/Banners as you like).
 
-The grant is keyed to the bundle id (`herdr.terminal-notifier`), so it persists across
+The grant is keyed to the bundle id (`herdr.dev.terminal-notifier`), so it persists across
 plugin updates and even if the app moves on disk. If notifications silently stop,
 re-check this setting and that Focus / Do Not Disturb is off.
 

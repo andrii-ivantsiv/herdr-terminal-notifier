@@ -877,11 +877,13 @@ test_state_sweep_removes_old_state_files() {
   # Old per-pane state files: must be swept.
   : >"$T/state/laststatus-oldpane"; touch -t "$old" "$T/state/laststatus-oldpane"
   : >"$T/state/debounce-oldpane";   touch -t "$old" "$T/state/debounce-oldpane"
+  : >"$T/state/group-oldpane";      touch -t "$old" "$T/state/group-oldpane"
   # Fresh per-pane state files: must survive.
   : >"$T/state/laststatus-freshpane"
   : >"$T/state/debounce-freshpane"
+  : >"$T/state/group-freshpane"
   # Unrelated file, even if old, must never be touched (find matches only the
-  # two state globs, never the sentinels/debug dump/anything else).
+  # three state globs, never the sentinels/debug dump/anything else).
   : >"$T/state/keep-me"; touch -t "$old" "$T/state/keep-me"
   EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"done","agent":"claude","workspace_id":"w1"}}'
   CONTEXT_JSON='{}'
@@ -889,8 +891,10 @@ test_state_sweep_removes_old_state_files() {
   assert_eq "$REPLY_RC" 0 "exit 0 after sweep"
   [ ! -e "$T/state/laststatus-oldpane" ] || fail "old laststatus must be swept"
   [ ! -e "$T/state/debounce-oldpane" ]   || fail "old debounce must be swept"
+  [ ! -e "$T/state/group-oldpane" ]      || fail "old group must be swept"
   [ -e "$T/state/laststatus-freshpane" ] || fail "fresh laststatus must survive"
   [ -e "$T/state/debounce-freshpane" ]   || fail "fresh debounce must survive"
+  [ -e "$T/state/group-freshpane" ]      || fail "fresh group must survive"
   [ -e "$T/state/keep-me" ]              || fail "unrelated file must survive the sweep"
   [ -e "$T/state/.state-swept" ]         || fail "sweep sentinel must be written"
   [ "$FAIL" -eq "$PRE_FAIL" ] && pass
@@ -1094,6 +1098,40 @@ test_dismiss_skip_no_group() {
   [ "$FAIL" -eq "$PRE_FAIL" ] && pass
 }
 
+# Dismiss must use the stored group key (written at post time) so that GROUP
+# templates with enrichment placeholders ({workspace}, {tab_label}, etc.) match
+# correctly.  The inline fallback ({pane} + {new_status} only) would leave
+# those placeholders literal and fail to match the posted notification.
+test_dismiss_uses_stored_group() {
+  CURRENT_TEST="dismiss_uses_stored_group"
+  new_temp
+  local n; n="$(make_notifier "$T/bin")"
+  HERDR_BIN="$(make_herdr "$T/bin")"
+  TN_CONFIG="$T/config.env"
+  make_config "$TN_CONFIG" "NOTIFIER=$n" 'TRIGGER_STATUSES="blocked done"' \
+    'DISMISS_STATUSES="working idle"' 'SUPPRESS_FOCUSED=0' 'ACTIVATE_ON_CLICK=0' \
+    'GROUP="{pane}-{new_status}"'
+  # 1) Post a "blocked" notification -> group key is "p1-blocked".
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"blocked","agent":"claude","workspace_id":"w1"}}'
+  CONTEXT_JSON='{}'
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on blocked post"
+  [ -f "$T/bin/notifier-args" ] || fail "blocked notification must fire"
+  assert_eq "$(_group_arg "$T/bin/notifier-args")" "p1-blocked" "posted group is p1-blocked"
+  rm -f "$T/bin/notifier-args"
+  # 2) Dismiss with "working" -> must remove "p1-blocked" (the stored group),
+  #    NOT "p1-working" or "p1-{new_status}".
+  EVENT_JSON='{"data":{"pane_id":"p1","agent_status":"working","agent":"claude","workspace_id":"w1"}}'
+  run_notify
+  assert_eq "$REPLY_RC" 0 "exit 0 on dismiss"
+  if [ -f "$T/bin/notifier-args" ]; then
+    assert_eq "$(_remove_arg "$T/bin/notifier-args")" "p1-blocked" "dismiss removes the stored group (p1-blocked), not p1-working"
+  else
+    fail "dismiss must call -remove with the stored group key"
+  fi
+  [ "$FAIL" -eq "$PRE_FAIL" ] && pass
+}
+
 # --- run ---------------------------------------------------------------------
 for t in \
   test_trigger_drop \
@@ -1132,7 +1170,8 @@ for t in \
   test_dismiss_fires \
   test_dismiss_bypasses_focused \
   test_dismiss_bypasses_debounce \
-  test_dismiss_skip_no_group; do
+  test_dismiss_skip_no_group \
+  test_dismiss_uses_stored_group; do
   PRE_FAIL="$FAIL"
   "$t"
 done

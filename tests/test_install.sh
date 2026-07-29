@@ -16,7 +16,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL="$ROOT/scripts/install.sh"
-PLUGIN_ID="herdr.terminal-notifier"
+PLUGIN_ID="herdr.dev.terminal-notifier"
 
 PASS=0 FAIL=0
 FAILED_NAMES=()

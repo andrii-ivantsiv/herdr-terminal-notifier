@@ -35,7 +35,9 @@ _tn_default TRIGGER_STATUSES "blocked done"
 
 # Which NEW agent statuses should dismiss/clear an existing notification.
 # For example, when you approve a blocked agent, its status changes to working,
-# so the previous notification can be removed automatically.
+# so the previous notification can be removed automatically. `idle` dismisses a
+# `done` notification when the user focuses the agent's tab (the agent transitions
+# from done to idle once seen), preventing stale toasts from accumulating.
 _tn_default DISMISS_STATUSES "working idle"
 
 # Suppress notifications for the workspace you are currently looking at.
@@ -56,7 +58,7 @@ _tn_default TERMINAL_APP_IDS "com.mitchellh.ghostty com.apple.Terminal com.googl
 # Ignore a repeated (pane,status) within this many seconds (flap guard).
 _tn_default DEBOUNCE_SECONDS "2"
 
-# Housekeeping: delete per-pane state files (laststatus-*/debounce-*) older than
+# Housekeeping: delete per-pane state files (laststatus-*/debounce-*/group-*)
 # this many days. Pane ids are ephemeral, so under a persistent
 # HERDR_PLUGIN_STATE_DIR these would otherwise accumulate forever. The sweep runs
 # at most once a day (gated by a .state-swept sentinel), never per event.
@@ -126,7 +128,7 @@ _tn_default ICON_DEFAULT ""
 
 # Respect [ui.sound] enabled = false in ~/.config/herdr/config.toml
 _herdr_config="${HERDR_CONFIG_PATH:-$HOME/.config/herdr/config.toml}"
-if [ -f "$_herdr_config" ] && awk '/\[ui\.sound\]/{flag=1; next} /^\[/{flag=0} flag && /enabled[[:space:]]*=[[:space:]]*false/{found=1} END {exit !found}' "$_herdr_config" 2>/dev/null; then
+if [ -f "$_herdr_config" ] && awk '/\[ui\.sound\]/{flag=1; next} /^\[/{flag=0} flag && !/^[[:space:]]*#/ && /enabled[[:space:]]*=[[:space:]]*false/{found=1} END {exit !found}' "$_herdr_config" 2>/dev/null; then
   _tn_default SOUND_BLOCKED "none"
   _tn_default SOUND_DONE "none"
   _tn_default SOUND_WORKING "none"

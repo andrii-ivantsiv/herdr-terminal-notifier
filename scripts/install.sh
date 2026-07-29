@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent install/link for the dot.terminal-notifier herdr plugin.
+# Idempotent install/link for the herdr.dev.terminal-notifier herdr plugin.
 #
 # Designed to be called from a declarative apply step, e.g.
 #   - chezmoi:     run_onchange_install-herdr-tn.sh
@@ -10,13 +10,13 @@
 # `herdr plugin install`, which herdr treats as an update.
 #
 # Usage:
-#   scripts/install.sh                 # install from GitHub (dot/herdr-terminal-notifier)
+#   scripts/install.sh                 # install from GitHub (andrii-ivantsiv/herdr-terminal-notifier)
 #   scripts/install.sh --force         # reinstall/update even if already registered
 #   scripts/install.sh --link [PATH]   # link a local checkout (default: this repo)
 set -euo pipefail
 
-PLUGIN_ID="herdr.terminal-notifier"
-GITHUB_SLUG="dot/herdr-terminal-notifier"
+PLUGIN_ID="herdr.dev.terminal-notifier"
+GITHUB_SLUG="andrii-ivantsiv/herdr-terminal-notifier"
 HERDR="${HERDR_BIN_PATH:-herdr}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
