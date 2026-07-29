@@ -61,7 +61,7 @@ re-check this setting and that Focus / Do Not Disturb is off.
 ## Install
 
 ```sh
-herdr plugin install dot/herdr-terminal-notifier      # GitHub
+herdr plugin install andrii-ivantsiv/herdr-terminal-notifier      # GitHub
 # or, for local dev:
 herdr plugin link /path/to/herdr-terminal-notifier
 ```
