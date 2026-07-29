@@ -74,7 +74,12 @@ _tn_default ACTIVATE_ON_CLICK "1"
 # argument and can't inject shell syntax into the click handler. Do NOT quote
 # placeholders yourself ("{pane}") — values arrive pre-quoted and would end up
 # double-escaped.
-_tn_default CLICK_COMMAND "agent focus {pane}"
+# Default also chains `; open -a Terminal` so a click both focuses the pane
+# inside herdr AND raises the terminal window to the foreground. The chain works
+# because notify.sh runs this through a shell as `herdr <CLICK_COMMAND>`; the `;`
+# separates the two commands. Swap "Terminal" for your terminal app, or drop the
+# chain, in a config file.
+_tn_default CLICK_COMMAND "agent focus {pane} ; open -a Terminal"
 
 # Notifier binary. Empty = use the bundled assets/HerdrNotify.app (herdr icon),
 # falling back to a system `terminal-notifier`. Set to an absolute path to use
@@ -126,7 +131,14 @@ _tn_default TITLE_DEFAULT "{agent}"
 _tn_default BODY_DEFAULT "{new_status}"
 _tn_default ICON_DEFAULT ""
 
-# Respect [ui.sound] enabled = false in ~/.config/herdr/config.toml
+# Sound defaults MATCH herdr's own [ui.sound] setting, so the plugin is audible
+# exactly when herdr is: if herdr's config.toml has `[ui.sound] enabled = false`
+# the statuses default to silent ("none"); otherwise (enabled, or the key/file
+# absent) blocked/done get a macOS system sound. Any explicit SOUND_<STATUS>
+# (env var or config file) still overrides this — the match only sets defaults.
+# HERDR_CONFIG_PATH lets tests point at a fixture; it falls back to the standard
+# location. The awk enters the [ui.sound] table, ignores comments, and succeeds
+# only on an `enabled = false` line before the next [section].
 _herdr_config="${HERDR_CONFIG_PATH:-$HOME/.config/herdr/config.toml}"
 if [ -f "$_herdr_config" ] && awk '/\[ui\.sound\]/{flag=1; next} /^\[/{flag=0} flag && !/^[[:space:]]*#/ && /enabled[[:space:]]*=[[:space:]]*false/{found=1} END {exit !found}' "$_herdr_config" 2>/dev/null; then
   _tn_default SOUND_BLOCKED "none"

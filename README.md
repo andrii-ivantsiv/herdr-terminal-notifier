@@ -1,5 +1,7 @@
 # herdr-terminal-notifier
 
+[![CI](https://github.com/andrii-ivantsiv/herdr-terminal-notifier/actions/workflows/ci.yml/badge.svg)](https://github.com/andrii-ivantsiv/herdr-terminal-notifier/actions/workflows/ci.yml)
+
 Customizable macOS notifications for [herdr](https://herdr.dev) agent state
 changes — with a **custom herdr app icon**, templated messages, and click-to-jump.
 
@@ -29,7 +31,11 @@ the herdr logo. No Homebrew `terminal-notifier` needed at runtime.
 
 ## Requirements
 
-- macOS (tested on macOS 26).
+- macOS on **Apple Silicon (M-series) only** — the bundled `HerdrNotify.app`
+  ships an arm64-only binary and will not run on Intel Macs. (tested on macOS 26.)
+- **Apple Terminal only** — the default `CLICK_COMMAND` chains `open -a Terminal`
+  to raise the terminal window on click. To use another terminal (iTerm2,
+  Ghostty, …) override `CLICK_COMMAND` (e.g. `agent focus {pane} ; open -a iTerm`).
 - `jq` — the only runtime dependency. Declare it in your `homebrew.nix` / `Brewfile`:
 
   ```sh
@@ -128,8 +134,9 @@ Key settings:
 | `SUPPRESS_FOCUSED` | `1` | mute only when the workspace is focused in herdr **and** the terminal is frontmost |
 | `TERMINAL_APP_IDS` | common terminals | bundle ids that host herdr, for the frontmost check (empty/undetectable ⇒ notify) |
 | `DEBOUNCE_SECONDS` | `2` | drop repeated `(pane,status)` within window |
+| `STATE_SWEEP_DAYS` | `7` | delete per-pane state files (`laststatus-*`/`debounce-*`/`group-*`) older than this; swept at most once a day |
 | `ACTIVATE_ON_CLICK` | `1` | click notification → focus the agent |
-| `CLICK_COMMAND` | `agent focus {pane}` | `herdr` subcommand run on click |
+| `CLICK_COMMAND` | `agent focus {pane} ; open -a Terminal` | `herdr` subcommand run on click (chains raising the terminal window) |
 | `NOTIFIER` | _(bundled app)_ | absolute path to override the notifier binary |
 | `REGISTER_TTL_SECONDS` | `21600` | refresh Launch Services registration when older (self-heals left icon) |
 | `ICON_MODE` | `contentImage` | right-side image mode (`contentImage`/`appIcon`) |
@@ -137,12 +144,14 @@ Key settings:
 | `TITLE_<STATUS>` / `BODY_<STATUS>` | see example | message templates |
 | `ICON_<STATUS>` / `SOUND_<STATUS>` | see example | right-side image / macOS sound |
 
-Template placeholders: `{agent}` `{workspace}` `{worktree}` `{tab}` `{pane}`
-`{session}` `{old_status}` `{new_status}` `{cwd}`. `<STATUS>` is the upper-cased
+Template placeholders: `{agent}` `{workspace}` `{worktree}` `{tab}` `{tab_label}`
+`{pane}` `{session}` `{old_status}` `{new_status}` `{cwd}`. `<STATUS>` is the upper-cased
 status (`BLOCKED`, `DONE`, …); `*_DEFAULT` covers the rest.
 
 The **left** icon is always the herdr logo (the notifier app). `ICON_*` controls
-the optional **right-side** status image.
+the optional **right-side** status image. Ready-made 128×128 status icons ship in
+`assets/icons/` (`blocked.png`, `done.png`, `working.png`); point `ICON_<STATUS>`
+at one to use it (relative paths resolve against the plugin root).
 
 **Grouping** (`GROUP`, default `{pane}`) sets terminal-notifier's `-group` key,
 which *replaces* any earlier notification sharing it. Per-pane grouping keeps one
@@ -185,7 +194,13 @@ bash scripts/setup-notifier.sh   # re-register; re-signs because the icon swap
 
 ## Notes & caveats
 
-- `SOUND_*` uses **macOS system sound names** (`Glass`, `Hero`, `Ping`, …).
+- `SOUND_*` uses **macOS system sound names** (`Glass`, `Hero`, `Ping`, …). Sound
+  defaults **match herdr's `[ui.sound]` setting**: with `enabled = false` in
+  herdr's `config.toml` the plugin is silent; otherwise blocked/done play a sound.
+  An explicit `SOUND_<STATUS>` override still wins over the match.
+- **Double sound:** if you enable herdr's `[ui.sound]`, herdr plays its own sound
+  *and* this plugin adds one — you may hear two chimes. Set `SOUND_*` to `none` (or
+  keep herdr's sound off) if that bothers you.
 - Set `DEBUG=1` to dump the raw event/context JSON to
   `$HERDR_PLUGIN_STATE_DIR/last-event.json` (handy after a herdr upgrade).
 - The bundled notifier is a copy of [`terminal-notifier`](https://github.com/julienXX/terminal-notifier)

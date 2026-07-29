@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# The plugin is macOS + Apple Silicon only (bundled arm64 HerdrNotify.app, and
+# the register/setup tests use codesign + Launch Services). GitHub's macos-14
+# runners are Apple Silicon, matching the supported target exactly.
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (jq, shellcheck)
+        run: |
+          command -v jq >/dev/null 2>&1 || brew install jq
+          command -v shellcheck >/dev/null 2>&1 || brew install shellcheck
+          jq --version
+          shellcheck --version
+
+      - name: ShellCheck (runtime sources — must be clean)
+        run: shellcheck -x bin/notify.sh lib/*.sh scripts/*.sh
+
+      - name: ShellCheck (tests — allow dynamic-source info SC1091)
+        run: shellcheck -x -e SC1091 tests/*.sh
+
+      - name: Run test suite
+        run: bash tests/run-tests.sh

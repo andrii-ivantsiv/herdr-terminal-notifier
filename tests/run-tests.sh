@@ -1177,7 +1177,25 @@ for t in \
 done
 
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
-if [ "$FAIL" -gt 0 ]; then
-  printf 'Failures:\n'; printf '  - %s\n' "${FAILED_NAMES[@]}"
+
+# Roll the standalone suites into the same run so run-tests.sh is the single
+# entry point (previously they had to be invoked by hand and were silently
+# skipped here). Each is its own script with its own pass/fail summary and exit
+# status, so we run them as subprocesses and fold their exit codes into this
+# runner's overall result rather than trying to merge their internal counters.
+suite_fail=0
+for suite in test_install test_setup_notifier test_notify_register; do
+  printf '\n=== %s ===\n' "$suite"
+  if ! bash "$ROOT/tests/$suite.sh"; then
+    suite_fail=$((suite_fail + 1))
+    FAILED_NAMES+=("suite:$suite exited non-zero")
+  fi
+done
+
+if [ "$FAIL" -gt 0 ] || [ "$suite_fail" -gt 0 ]; then
+  printf '\nFailures:\n'
+  # bash-3.2-safe expansion of a possibly-empty array under set -u.
+  for _n in ${FAILED_NAMES[@]+"${FAILED_NAMES[@]}"}; do printf '  - %s\n' "$_n"; done
   exit 1
 fi
+printf '\nall suites passed\n'

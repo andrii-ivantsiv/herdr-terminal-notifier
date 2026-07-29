@@ -236,6 +236,9 @@ case " $TRIGGER_STATUSES " in
         if [ -f "$group_file" ]; then
           group="$(cat "$group_file" 2>/dev/null || true)"
         else
+          # GROUP is a config key (lib/config.sh); SC2153 mistakes it for the
+          # local `group` because they differ only in case.
+          # shellcheck disable=SC2153
           group="${GROUP//\{pane\}/$pane_id}"
           group="${group//\{new_status\}/$old_status}"
         fi
